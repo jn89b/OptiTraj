@@ -152,8 +152,8 @@ class OptimalControlProblem(ABC):
             solver_opts = {
                 'ipopt': {
                     # 'max_iter': 50,
-                    'max_cpu_time': 0.10,
-                    'max_wall_time': 0.10,
+                    # 'max_cpu_time': 0.10,
+                    # 'max_wall_time': 0.10,
                     'print_level': 0,
                     'warm_start_init_point': 'yes', #use the previous solution as initial guess
                     # 'acceptable_tol': 1e-2,

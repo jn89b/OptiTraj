@@ -143,23 +143,18 @@ class CloseLoopSim():
                 
             if self.dynamics_adapter is not None:
                 self.dynamics_adapter.run()
-                self.shift_next(sol)
-                print("states: ", sol['states'])
-                print("controls: ", sol['controls'])
-                #self.shift_next(sol)
-                #self.x_init = self.dynamics_adapter.get_state_information()
-                #self.u0 = self.dynamics_adapter.get_control_information()
+                self.x_init = self.dynamics_adapter.get_state_information()
+                self.u0 = self.dynamics_adapter.get_control_information()
             else:
                 self.shift_next(sol)
-                
+
             #def check criteria
             if self.stop_criteria is not None and self.stop_criteria(
                 self.x_init, self.x_final):
                 print('Stopping criteria met')
                 self.report.save_everything()
                 break
-                    
-            
+                     
     def shift_next(self, sol: dict) -> None:
         """
         Shift over the next initial state
@@ -178,8 +173,7 @@ class CloseLoopSim():
         self.x_init = np.array(x_init)
         self.u0 = np.array(u0)
 
-        return             
-    
+        return
     
     def reset(self, x0:np.ndarray, 
               xF:np.ndarray, u0: np.ndarray,
