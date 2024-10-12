@@ -19,14 +19,10 @@ class PlaneOptControl(OptimalControlProblem):
     def __init__(self,
                  mpc_params: MPCParams,
                  casadi_model: CasadiModel,
-                 state_limits: dict,
-                 ctrl_limits: dict,
                  use_obs_avoidance: bool = False,
                  obs_params: dict = None) -> None:
         super().__init__(mpc_params,
-                         casadi_model,
-                         state_limits,
-                         ctrl_limits)
+                         casadi_model)
 
         self.use_obs_avoidance: bool = use_obs_avoidance
         self.obs_params: dict = obs_params

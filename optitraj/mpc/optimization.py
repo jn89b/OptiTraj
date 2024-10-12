@@ -16,9 +16,7 @@ class OptimalControlProblem(ABC):
 
     def __init__(self,
                  mpc_params: MPCParams,
-                 casadi_model: CasadiModel,
-                 state_limits: dict,
-                 ctrl_limits: dict) -> None:
+                 casadi_model: CasadiModel) -> None:
 
         self.nlp: Dict = None
         self.solver = None
@@ -31,8 +29,13 @@ class OptimalControlProblem(ABC):
         self.Q: np.ndarray[float] = mpc_params.Q
         self.R: np.ndarray[float] = mpc_params.R
         self.casadi_model: CasadiModel = casadi_model
-        self.state_limits: dict = state_limits
-        self.ctrl_limits: dict = ctrl_limits
+        self.state_limits: dict = casadi_model.state_limits
+        self.ctrl_limits: dict = casadi_model.control_limits
+
+        if self.state_limits is None:
+            raise ValueError("State limits not defined.")
+        if self.ctrl_limits is None:
+            raise ValueError("Control limits not defined.")
 
         validate_limits(self.state_limits, limit_type="state")
         validate_limits(self.ctrl_limits, limit_type="control")

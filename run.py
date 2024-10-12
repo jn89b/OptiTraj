@@ -8,7 +8,7 @@ from typing import Dict
 from aircraftsim import DataVisualizer
 
 from optitraj.models.plane import Plane, JSBPlane
-from optitraj.close_loop import CloseLoopSim, DynamicsAdapter
+from optitraj.close_loop import CloseLoopSim
 from optitraj.mpc.PlaneOptControl import PlaneOptControl
 from optitraj.utils.data_container import MPCParams
 from optitraj.utils.report import Report
@@ -17,18 +17,11 @@ from optitraj.dynamics_adapter import JSBSimAdapter
 # check if aircraftsim is installed
 try:
     # import aircraftsim
-
     from aircraftsim import (
-        SimInterface
+        SimInterface,
+        AircraftIC
     )
 
-    from aircraftsim import (
-        AircraftStateLimits,
-        HighLevelControlLimits,
-        HighControlInputs,
-        AircraftIC,
-        AircraftState,
-    )
 
 except ImportError:
     print('aircraftsim not installed')
@@ -36,104 +29,6 @@ except ImportError:
 GOAL_X = 125
 GOAL_Y = 80
 GOAL_Z = 15
-
-
-# class JSBSimAdapter(DynamicsAdapter):
-#     def __init__(self, simulator: SimInterface) -> None:
-#         super().__init__(simulator)
-#         self.simulator: SimInterface = simulator
-#         self.current_control: HighControlInputs = None
-#         self.goal_x = GOAL_X
-#         self.goal_y = GOAL_Y
-
-#     def initialize(self) -> None:
-#         self.simulator.initialize()
-
-#     def wrap_yaw(self, yaw_rad: float) -> float:
-#         """
-#         Used to wrap the yaw from -pi to pi
-#         """
-#         if yaw_rad > np.pi:
-#             yaw_rad -= 2*np.pi
-#         elif yaw_rad < -np.pi:
-#             yaw_rad += 2*np.pi
-#         return yaw_rad
-
-#     def set_controls(self, x: Dict, u: dict, idx: int,
-#                      xF: np.ndarray) -> None:
-#         """
-#         For this u we will have to convert it to the high level control
-#         which is  alt_ref_m, heading_ref_deg, vel_cmd
-
-#         JSBSIM's heading controller is oriented NED
-#         Where 0 degrees is North
-#         90 degrees is East
-
-#         Since our trajectory planner considers
-#         everything in ENU convention we're going to
-#         need to transform the information
-
-#         If using the JSBSim's heading controller,
-#         the heading controller a relative heading controller
-#         that is if you set it to 45 degrees it will
-#         keep turning
-
-#         """
-#         idx = -1
-#         x_ref_m = x['x'][idx]
-#         y_ref_m = x['y'][idx]
-#         aircraft_state = self.get_state_information()
-#         # FIX THE COORDINATE TRANSFORMATION
-#         dx = x_ref_m - aircraft_state[0]
-#         dy = y_ref_m - aircraft_state[1]
-
-#         # for some reason the reference for height doesn't work well
-#         # so we're going to set z height based on the goal location
-#         los = np.arctan2(dy, dx)
-#         los = np.pi/2 - los
-#         vel_cmd = u['v_cmd'][idx]
-#         self.current_control = HighControlInputs(
-#             ctrl_idx=1,
-#             alt_ref_m=xF[2],
-#             heading_ref_deg=np.rad2deg(los),
-#             vel_cmd=vel_cmd
-#         )
-
-#     def run(self) -> None:
-#         self.simulator.step(self.current_control)
-
-#     def get_state_information(self) -> np.ndarray:
-#         """
-#         """
-#         aircraft_state: AircraftState = self.simulator.get_states()
-#         # wrap aircraft yaw from -pi to pi
-#         transformed_yaw = np.pi/2 - aircraft_state.yaw
-#         if transformed_yaw > np.pi:
-#             transformed_yaw -= 2*np.pi
-#         elif transformed_yaw < -np.pi:
-#             transformed_yaw += 2*np.pi
-
-#         return np.array([
-#             aircraft_state.x,
-#             aircraft_state.y,
-#             aircraft_state.z,
-#             aircraft_state.roll,
-#             aircraft_state.pitch,
-#             transformed_yaw,
-#             aircraft_state.airspeed
-#         ])
-
-#     def get_control_information(self) -> np.ndarray:
-#         aircraft_state: AircraftState = self.simulator.get_states()
-#         p_q_r = self.simulator.sim.get_rates()
-#         p_q_r[2] = np.pi/2 - p_q_r[2]
-#         current_heading = aircraft_state.yaw
-
-#         return np.array([
-#             current_heading,
-#             aircraft_state.z,
-#             aircraft_state.airspeed,
-#         ])
 
 
 class Test():
@@ -162,12 +57,12 @@ class Test():
             'psi': {'min': -np.pi, 'max': np.pi},
             'v': {'min': 15, 'max': 30.0}
         }
+        self.plane.set_control_limits(control_limits_dict)
+        self.plane.set_state_limits(state_limits_dict)
 
         params = MPCParams(Q=Q, R=R, N=10, dt=0.1)
         self.mpc = PlaneOptControl(mpc_params=params,
-                                   casadi_model=self.plane,
-                                   state_limits=state_limits_dict,
-                                   ctrl_limits=control_limits_dict)
+                                   casadi_model=self.plane)
 
         self.closed_loop_sim = None
 
@@ -204,11 +99,7 @@ class Test():
         u_0 = np.array([0, 0, 20])
 
         self.plane = JSBPlane()
-        Q = np.array([1, 1, 1, 0, 0, 0, 0])
-        # Q = np.eye(plane.n_states)
-        Q = np.diag(Q)
-        R = np.array([0, 0, 0])  # np.eye(self.plane.n_controls)
-        R = np.diag(R)
+
         # let's define the limits for the states and controls
         control_limits_dict = {
             'u_psi': {'min': -np.deg2rad(180), 'max': np.deg2rad(180)},
@@ -225,27 +116,18 @@ class Test():
             'psi': {'min': -np.pi, 'max': np.pi},
             'v': {'min': 15, 'max': 30.0}
         }
+        self.plane.set_control_limits(control_limits_dict)
+        self.plane.set_state_limits(state_limits_dict)
+
+        Q = np.array([1, 1, 1, 0, 0, 0, 0])
+        # Q = np.eye(plane.n_states)
+        Q = np.diag(Q)
+        R = np.array([0, 0, 0])  # np.eye(self.plane.n_controls)
+        R = np.diag(R)
 
         params = MPCParams(Q=Q, R=R, N=10, dt=0.1)
         self.mpc = PlaneOptControl(mpc_params=params,
-                                   casadi_model=self.plane,
-                                   state_limits=state_limits_dict,
-                                   ctrl_limits=control_limits_dict)
-
-        state_limits = AircraftStateLimits(
-            x_bounds=[-100, 100],
-            y_bounds=[-100, 100],
-            z_bounds=[-100, 100],
-            roll_bounds=[-np.deg2rad(45), np.deg2rad(45)],
-            pitch_bounds=[-np.deg2rad(45), np.deg2rad(45)],
-            yaw_bounds=[-np.deg2rad(180), np.deg2rad(180)],
-            airspeed_bounds=[15, 30])
-
-        hl_ctrl_limits = HighLevelControlLimits(
-            roll_rate=[-np.deg2rad(45), np.deg2rad(45)],
-            pitch_rate=[-np.deg2rad(45), np.deg2rad(45)],
-            yaw_rate=[-np.deg2rad(45), np.deg2rad(45)],
-            vel_cmd=[15, 30])
+                                   casadi_model=self.plane)
 
         init_cond = AircraftIC(
             x=0, y=0, z=x_init[2],
@@ -257,8 +139,6 @@ class Test():
         sim = SimInterface(
             aircraft_name='x8',
             init_cond=init_cond,
-            high_control_lim=hl_ctrl_limits,
-            state_lim=state_limits,
             sim_freq=60,
         )
 
