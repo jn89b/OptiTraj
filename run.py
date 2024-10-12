@@ -32,9 +32,9 @@ try:
 except ImportError:
     print('aircraftsim not installed')
 
-GOAL_X = 65
+GOAL_X = 125
 GOAL_Y = 80
-GOAL_Z = 30
+GOAL_Z = 15
 
 
 class JSBSimAdapter(DynamicsAdapter):
@@ -58,7 +58,8 @@ class JSBSimAdapter(DynamicsAdapter):
             yaw_rad += 2*np.pi
         return yaw_rad
 
-    def set_controls(self, x: Dict, u: dict, idx: int) -> None:
+    def set_controls(self, x: Dict, u: dict, idx: int,
+                     xF: np.ndarray) -> None:
         """
         For this u we will have to convert it to the high level control
         which is  alt_ref_m, heading_ref_deg, vel_cmd
@@ -81,33 +82,18 @@ class JSBSimAdapter(DynamicsAdapter):
         x_ref_m = x['x'][idx]
         y_ref_m = x['y'][idx]
         aircraft_state = self.get_state_information()
-        print(f"x: {aircraft_state[0]}, y: {aircraft_state[1]}, \
-            z: {aircraft_state[2]}, \
-                yaw: {np.rad2deg(aircraft_state[5])}, \
-                    airspeed: {aircraft_state[6]}")
-
         # FIX THE COORDINATE TRANSFORMATION
         dx = x_ref_m - aircraft_state[0]
         dy = y_ref_m - aircraft_state[1]
-        dz = x['z'][idx]
 
-        # u_psi = u['u_psi'][idx]
-        # u_z = u['u_z'][idx]  # + aircraft_state[2]
-        # # u_psi = u_psi - aircraft_state[5]
-        # u_psi = u_psi
-        u_psi = x['psi'][idx]
-        u_psi = np.pi/2 - u_psi
-
+        # for some reason the reference for height doesn't work well
+        # so we're going to set z height based on the goal location
         los = np.arctan2(dy, dx)
         los = np.pi/2 - los
-        los_dg = np.rad2deg(los)
-        print(f"los: {np.rad2deg(los)}")
-
         vel_cmd = u['v_cmd'][idx]
-        print("u_psi: ", np.rad2deg(u_psi))
         self.current_control = HighControlInputs(
             ctrl_idx=1,
-            alt_ref_m=30,
+            alt_ref_m=xF[2],
             heading_ref_deg=np.rad2deg(los),
             vel_cmd=vel_cmd
         )
@@ -142,19 +128,12 @@ class JSBSimAdapter(DynamicsAdapter):
         p_q_r = self.simulator.sim.get_rates()
         p_q_r[2] = np.pi/2 - p_q_r[2]
         current_heading = aircraft_state.yaw
-        if self.current_control:
-            current_ctrl = self.current_control
-            return np.array([
-                current_heading,
-                current_ctrl.alt_ref_m,
-                current_ctrl.vel_cmd,
-            ])
-        else:
-            return np.array([
-                0.0,
-                0.0,
-                15.0
-            ])
+
+        return np.array([
+            current_heading,
+            aircraft_state.z,
+            aircraft_state.airspeed,
+        ])
 
 
 class Test():
@@ -192,8 +171,7 @@ class Test():
 
         self.closed_loop_sim = None
 
-    def run_kinematics(self):
-
+    def run_kinematics(self) -> None:
         x_init = np.array([0, 0, 15, 0, 0, 0, 15])
         x_final = np.array([GOAL_X, GOAL_Y, 40, 0, 0, 0, 30])
         u_0 = np.array([0, 0, 0, 15])
@@ -223,14 +201,14 @@ class Test():
 
         x_init = np.array([0, 0, 15, 0, 0, np.deg2rad(-225), 15])
         x_final = np.array([GOAL_X, GOAL_Y, 30, 0, 0, 0, 30])
-        u_0 = np.array([0, 0, 15])
+        u_0 = np.array([0, 0, 20])
 
         self.plane = JSBPlane()
         Q = np.array([1, 1, 1, 0, 0, 0, 0])
         # Q = np.eye(plane.n_states)
         Q = np.diag(Q)
-        R = np.eye(self.plane.n_controls)
-
+        R = np.array([0, 0, 0])  # np.eye(self.plane.n_controls)
+        R = np.diag(R)
         # let's define the limits for the states and controls
         control_limits_dict = {
             'u_psi': {'min': -np.deg2rad(180), 'max': np.deg2rad(180)},
@@ -270,11 +248,11 @@ class Test():
             vel_cmd=[15, 30])
 
         init_cond = AircraftIC(
-            x=0, y=0, z=30,
+            x=0, y=0, z=x_init[2],
             roll=np.deg2rad(0),
             pitch=np.deg2rad(0),
             yaw=x_init[5],
-            airspeed_m=20)
+            airspeed_m=x_init[6])
 
         sim = SimInterface(
             aircraft_name='x8',

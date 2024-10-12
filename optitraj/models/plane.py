@@ -23,7 +23,7 @@ class JSBPlane(CasadiModel):
         self.phi_f = ca.MX.sym('phi_f')
         self.theta_f = ca.MX.sym('theta_f')
         self.psi_f = ca.MX.sym('psi_f')
-        self.v = ca.MX.sym('t')
+        self.v = ca.MX.sym('v')
 
         self.states = ca.vertcat(
             self.x_f,
@@ -55,7 +55,8 @@ class JSBPlane(CasadiModel):
         self.g = 9.81
         self.x_fdot = self.v_cmd * ca.cos(self.psi_f) * ca.cos(self.theta_f)
         self.y_fdot = self.v_cmd * ca.sin(self.psi_f) * ca.cos(self.theta_f)
-        self.z_fdot = self.v_cmd * ca.sin(self.theta_f)  # + self.u_z
+        # -self.v_cmd * ca.sin(self.theta_f)
+        self.z_fdot = -self.u_z * (1/self.pitch_tau)
 
         self.phi_fdot = self.phi_f
         self.theta_fdot = self.theta_f
@@ -102,7 +103,7 @@ class Plane(CasadiModel):
         self.phi_f = ca.MX.sym('phi_f')
         self.theta_f = ca.MX.sym('theta_f')
         self.psi_f = ca.MX.sym('psi_f')
-        self.v = ca.MX.sym('t')
+        self.v = ca.MX.sym('v')
 
         self.states = ca.vertcat(
             self.x_f,
@@ -138,15 +139,11 @@ class Plane(CasadiModel):
         self.x_fdot = self.v_cmd * ca.cos(self.theta_f) * ca.cos(self.psi_f)
         self.y_fdot = self.v_cmd * ca.cos(self.theta_f) * ca.sin(self.psi_f)
         self.z_fdot = -self.v_cmd * ca.sin(self.theta_f)
-        # self.x_fdot = self.v_cmd *  ca.sin(-self.psi_f)
-        # self.y_fdot = self.v_cmd *  ca.cos(-self.psi_f)
-        # self.z_fdot = -self.v_cmd * ca.sin(self.theta_f)
 
         self.phi_fdot = -self.u_phi * (1/self.pitch_tau) - self.phi_f
         self.theta_fdot = -self.u_theta * 1/0.5 - self.theta_f
         self.v_dot = ca.sqrt(self.x_fdot**2 + self.y_fdot **
                              2 + self.z_fdot**2)
-        # -self.g * (ca.tan(self.phi_f) / self.v_cmd)
         self.psi_fdot = self.u_psi
 
         self.z_dot = ca.vertcat(
