@@ -12,56 +12,7 @@ from optitraj.models.casadi_model import CasadiModel
 from optitraj.mpc.optimization import OptimalControlProblem
 from optitraj.utils.report import Report
 from abc import ABC, abstractmethod
-
-
-class DynamicsAdapter():
-    def __init__(self,
-                 simulator: Any) -> None:
-        self.simulator: Any = simulator
-
-    @abstractmethod
-    def initialize(self) -> None:
-        """
-        Initialize the dynamics system
-        """
-        pass
-
-    @abstractmethod
-    def set_controls(self, x: Dict, u: Dict, ctrl_idx: int) -> None:
-        """
-        Set the controls for the dynamics system 
-        so that it can interface with the Simulator
-        """
-        pass
-
-    @abstractmethod
-    def get_state_information(self) -> Dict:
-        """
-        Method used to get information about the dynamics system
-        to use for the MPC
-        """
-        pass
-
-    @abstractmethod
-    def get_control_information(self) -> Dict:
-        """
-        Method used to get information about the dynamics system
-        to use for the MPC
-        """
-
-    @abstractmethod
-    def run(self, **kwargs) -> None:
-        """
-        Run the dynamics system
-        """
-        pass
-
-    @abstractmethod
-    def reset(self) -> None:
-        """
-        Reset the dynamics system
-        """
-        pass
+from optitraj.dynamics_adapter import DynamicsAdapter
 
 
 class CloseLoopSim():

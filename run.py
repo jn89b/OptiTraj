@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import pickle as pkl
 
 from typing import Dict
 
@@ -11,7 +12,7 @@ from optitraj.close_loop import CloseLoopSim, DynamicsAdapter
 from optitraj.mpc.PlaneOptControl import PlaneOptControl
 from optitraj.utils.data_container import MPCParams
 from optitraj.utils.report import Report
-
+from optitraj.dynamics_adapter import JSBSimAdapter
 
 # check if aircraftsim is installed
 try:
@@ -37,103 +38,102 @@ GOAL_Y = 80
 GOAL_Z = 15
 
 
-class JSBSimAdapter(DynamicsAdapter):
-    def __init__(self, simulator: SimInterface) -> None:
-        super().__init__(simulator)
-        self.simulator: SimInterface = simulator
-        self.current_control: HighControlInputs = None
-        self.goal_x = GOAL_X
-        self.goal_y = GOAL_Y
+# class JSBSimAdapter(DynamicsAdapter):
+#     def __init__(self, simulator: SimInterface) -> None:
+#         super().__init__(simulator)
+#         self.simulator: SimInterface = simulator
+#         self.current_control: HighControlInputs = None
+#         self.goal_x = GOAL_X
+#         self.goal_y = GOAL_Y
 
-    def initialize(self) -> None:
-        self.simulator.initialize()
+#     def initialize(self) -> None:
+#         self.simulator.initialize()
 
-    def wrap_yaw(self, yaw_rad: float) -> float:
-        """
-        Used to wrap the yaw from -pi to pi
-        """
-        if yaw_rad > np.pi:
-            yaw_rad -= 2*np.pi
-        elif yaw_rad < -np.pi:
-            yaw_rad += 2*np.pi
-        return yaw_rad
+#     def wrap_yaw(self, yaw_rad: float) -> float:
+#         """
+#         Used to wrap the yaw from -pi to pi
+#         """
+#         if yaw_rad > np.pi:
+#             yaw_rad -= 2*np.pi
+#         elif yaw_rad < -np.pi:
+#             yaw_rad += 2*np.pi
+#         return yaw_rad
 
-    def set_controls(self, x: Dict, u: dict, idx: int,
-                     xF: np.ndarray) -> None:
-        """
-        For this u we will have to convert it to the high level control
-        which is  alt_ref_m, heading_ref_deg, vel_cmd
+#     def set_controls(self, x: Dict, u: dict, idx: int,
+#                      xF: np.ndarray) -> None:
+#         """
+#         For this u we will have to convert it to the high level control
+#         which is  alt_ref_m, heading_ref_deg, vel_cmd
 
-        JSBSIM's heading controller is oriented NED
-        Where 0 degrees is North
-        90 degrees is East
+#         JSBSIM's heading controller is oriented NED
+#         Where 0 degrees is North
+#         90 degrees is East
 
-        Since our trajectory planner considers
-        everything in ENU convention we're going to
-        need to transform the information
+#         Since our trajectory planner considers
+#         everything in ENU convention we're going to
+#         need to transform the information
 
-        If using the JSBSim's heading controller,
-        the heading controller a relative heading controller
-        that is if you set it to 45 degrees it will
-        keep turning
+#         If using the JSBSim's heading controller,
+#         the heading controller a relative heading controller
+#         that is if you set it to 45 degrees it will
+#         keep turning
 
-        """
-        idx = -1
-        x_ref_m = x['x'][idx]
-        y_ref_m = x['y'][idx]
-        aircraft_state = self.get_state_information()
-        # FIX THE COORDINATE TRANSFORMATION
-        dx = x_ref_m - aircraft_state[0]
-        dy = y_ref_m - aircraft_state[1]
+#         """
+#         idx = -1
+#         x_ref_m = x['x'][idx]
+#         y_ref_m = x['y'][idx]
+#         aircraft_state = self.get_state_information()
+#         # FIX THE COORDINATE TRANSFORMATION
+#         dx = x_ref_m - aircraft_state[0]
+#         dy = y_ref_m - aircraft_state[1]
 
-        # for some reason the reference for height doesn't work well
-        # so we're going to set z height based on the goal location
-        los = np.arctan2(dy, dx)
-        los = np.pi/2 - los
-        vel_cmd = u['v_cmd'][idx]
-        self.current_control = HighControlInputs(
-            ctrl_idx=1,
-            alt_ref_m=xF[2],
-            heading_ref_deg=np.rad2deg(los),
-            vel_cmd=vel_cmd
-        )
+#         # for some reason the reference for height doesn't work well
+#         # so we're going to set z height based on the goal location
+#         los = np.arctan2(dy, dx)
+#         los = np.pi/2 - los
+#         vel_cmd = u['v_cmd'][idx]
+#         self.current_control = HighControlInputs(
+#             ctrl_idx=1,
+#             alt_ref_m=xF[2],
+#             heading_ref_deg=np.rad2deg(los),
+#             vel_cmd=vel_cmd
+#         )
 
-    def run(self) -> None:
-        self.simulator.step(self.current_control)
+#     def run(self) -> None:
+#         self.simulator.step(self.current_control)
 
-    def get_state_information(self) -> np.ndarray:
-        """
-        """
-        aircraft_state: AircraftState = self.simulator.get_states()
-        current_ctrl = self.current_control
-        # wrap aircraft yaw from -pi to pi
-        transformed_yaw = np.pi/2 - aircraft_state.yaw
-        if transformed_yaw > np.pi:
-            transformed_yaw -= 2*np.pi
-        elif transformed_yaw < -np.pi:
-            transformed_yaw += 2*np.pi
+#     def get_state_information(self) -> np.ndarray:
+#         """
+#         """
+#         aircraft_state: AircraftState = self.simulator.get_states()
+#         # wrap aircraft yaw from -pi to pi
+#         transformed_yaw = np.pi/2 - aircraft_state.yaw
+#         if transformed_yaw > np.pi:
+#             transformed_yaw -= 2*np.pi
+#         elif transformed_yaw < -np.pi:
+#             transformed_yaw += 2*np.pi
 
-        return np.array([
-            aircraft_state.x,
-            aircraft_state.y,
-            aircraft_state.z,
-            aircraft_state.roll,
-            aircraft_state.pitch,
-            transformed_yaw,
-            aircraft_state.airspeed
-        ])
+#         return np.array([
+#             aircraft_state.x,
+#             aircraft_state.y,
+#             aircraft_state.z,
+#             aircraft_state.roll,
+#             aircraft_state.pitch,
+#             transformed_yaw,
+#             aircraft_state.airspeed
+#         ])
 
-    def get_control_information(self) -> np.ndarray:
-        aircraft_state: AircraftState = self.simulator.get_states()
-        p_q_r = self.simulator.sim.get_rates()
-        p_q_r[2] = np.pi/2 - p_q_r[2]
-        current_heading = aircraft_state.yaw
+#     def get_control_information(self) -> np.ndarray:
+#         aircraft_state: AircraftState = self.simulator.get_states()
+#         p_q_r = self.simulator.sim.get_rates()
+#         p_q_r[2] = np.pi/2 - p_q_r[2]
+#         current_heading = aircraft_state.yaw
 
-        return np.array([
-            current_heading,
-            aircraft_state.z,
-            aircraft_state.airspeed,
-        ])
+#         return np.array([
+#             current_heading,
+#             aircraft_state.z,
+#             aircraft_state.airspeed,
+#         ])
 
 
 class Test():
@@ -295,7 +295,7 @@ class Test():
     def plot(self, report: Report, cl_sim: CloseLoopSim,
              plt_jsbsim: bool = False) -> None:
         states = report.current_state
-        controls = report.current_control
+        # controls = report.current_control
         time = report.time_dict['time']
         traj = report.state_traj
         idx = 1
@@ -344,7 +344,6 @@ class Test():
         # ax.plot(states['x'][-1], states['y'][-1], states['z'][-1], 'ro', label='goal')
         ax.plot(GOAL_X, GOAL_Y, 40, 'ro', label='goal')
 
-        import pickle as pkl
         pkl.dump(states, open('states.pkl', 'wb'))
         pkl.dump(next_state, open('next_state.pkl', 'wb'))
         pkl.dump(time, open('time.pkl', 'wb'))
