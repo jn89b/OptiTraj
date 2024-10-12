@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import math
 import pickle as pkl
 
-from typing import Dict
+from typing import Dict, List
 
 from aircraftsim import DataVisualizer
 
 from optitraj.models.plane import Plane, JSBPlane
 from optitraj.close_loop import CloseLoopSim
-from optitraj.mpc.PlaneOptControl import PlaneOptControl
+from optitraj.mpc.PlaneOptControl import PlaneOptControl, Obstacle
 from optitraj.utils.data_container import MPCParams
 from optitraj.utils.report import Report
 from optitraj.dynamics_adapter import JSBSimAdapter
@@ -27,7 +27,7 @@ except ImportError:
     print('aircraftsim not installed')
 
 GOAL_X = 125
-GOAL_Y = 80
+GOAL_Y = 125
 GOAL_Z = 15
 
 
@@ -94,10 +94,12 @@ class Test():
 
     def run_jsbsim(self):
 
-        x_init = np.array([0, 0, 15, 0, 0, np.deg2rad(-225), 15])
+        x_init = np.array([0, 0, 15, 0, 0, np.deg2rad(45), 15])
         x_final = np.array([GOAL_X, GOAL_Y, 30, 0, 0, 0, 30])
         u_0 = np.array([0, 0, 20])
 
+        obstacle_list: List[Obstacle] = []
+        obstacle_list.append(Obstacle(center=[30, 30, 20], radius=10))
         self.plane = JSBPlane()
 
         # let's define the limits for the states and controls
@@ -127,7 +129,9 @@ class Test():
 
         params = MPCParams(Q=Q, R=R, N=10, dt=0.1)
         self.mpc = PlaneOptControl(mpc_params=params,
-                                   casadi_model=self.plane)
+                                   casadi_model=self.plane,
+                                   use_obs_avoidance=True,
+                                   obs_params=obstacle_list)
 
         init_cond = AircraftIC(
             x=0, y=0, z=x_init[2],

@@ -21,6 +21,7 @@ class CasadiModel(ABC):
         self.n_states: int = None
         self.n_controls: int = None
         self.control_limits: Dict = None
+        self.state_limits: Dict = None
 
     @abstractmethod
     def define_states(self) -> None:
