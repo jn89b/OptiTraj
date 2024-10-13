@@ -19,19 +19,22 @@ class Obstacle:
 class PlaneOptControl(OptimalControlProblem):
     """
     Example of a class that inherits from OptimalControlProblem
-
+    for the Plane model using Casadi, can be used for 
+    obstacle avoidance
     """
 
     def __init__(self,
                  mpc_params: MPCParams,
                  casadi_model: CasadiModel,
                  use_obs_avoidance: bool = False,
-                 obs_params: List[Obstacle] = None) -> None:
+                 obs_params: List[Obstacle] = None,
+                 robot_radius: float = 3.0) -> None:
         super().__init__(mpc_params,
                          casadi_model)
 
         self.use_obs_avoidance: bool = use_obs_avoidance
         self.obs_params: dict = obs_params
+        self.robot_radius: float = robot_radius
         if self.use_obs_avoidance:
             self.is_valid_obs_params()
             self.set_obstacle_avoidance_constraints()
@@ -66,6 +69,9 @@ class PlaneOptControl(OptimalControlProblem):
         return cost
 
     def set_obstacle_avoidance_constraints(self) -> None:
+        """
+        Set the obstacle avoidance constraints for the optimal control problem
+        """
         x_position = self.X[0, :]
         y_position = self.X[1, :]
 
@@ -74,7 +80,7 @@ class PlaneOptControl(OptimalControlProblem):
             obs_radius: float = obs.radius
             distance = -ca.sqrt((x_position - obs_center[0])**2 +
                                 (y_position - obs_center[1])**2)
-            diff = distance + obs_radius
+            diff = distance + obs_radius + self.robot_radius
             self.g = ca.vertcat(self.g, diff[:-1].T)
 
     def compute_obstacle_avoidance_cost(self) -> MX:
@@ -92,14 +98,9 @@ class PlaneOptControl(OptimalControlProblem):
             obs_radius: float = obs.radius
             distance = -ca.sqrt((x_position - obs_center[0])**2 +
                                 (y_position - obs_center[1])**2)
-            diff = distance + obs_radius
+            diff = distance + obs_radius + self.robot_radius
             cost += ca.sum1(diff[:-1].T)
-            # self.g = ca.vertcat(self.g, diff[:-1].T)
 
-        # for k in range(self.N):
-        #     states = self.X[:, k]
-        #     distance = ca.norm_2(states[0:3] - obs_center)
-        #     self.g = ca.vertcat(self.g, -distance + obs_radius)
         return cost
 
     def compute_total_cost(self) -> MX:
@@ -109,7 +110,8 @@ class PlaneOptControl(OptimalControlProblem):
 
     def solve(self, x0: np.ndarray, xF: np.ndarray, u0: np.ndarray) -> np.ndarray:
         """
-        Solve the optimal control problem
+        Solve the optimal control problem for the given initial state and control
+
         """
         state_init = ca.DM(x0)
         state_final = ca.DM(xF)

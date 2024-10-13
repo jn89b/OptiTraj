@@ -141,3 +141,6 @@ class JSBSimAdapter(DynamicsAdapter):
             aircraft_state.z,
             aircraft_state.airspeed,
         ])
+
+    def reset(self) -> None:
+        pass

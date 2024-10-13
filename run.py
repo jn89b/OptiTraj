@@ -15,6 +15,9 @@ from optitraj.utils.report import Report
 from optitraj.dynamics_adapter import JSBSimAdapter
 
 # check if aircraftsim is installed
+"""
+
+"""
 try:
     # import aircraftsim
     from aircraftsim import (
@@ -60,16 +63,22 @@ class Test():
         self.plane.set_control_limits(control_limits_dict)
         self.plane.set_state_limits(state_limits_dict)
 
-        params = MPCParams(Q=Q, R=R, N=10, dt=0.1)
-        self.mpc = PlaneOptControl(mpc_params=params,
-                                   casadi_model=self.plane)
-
+        self.params = MPCParams(Q=Q, R=R, N=10, dt=0.1)
+        self.mpc = None
         self.closed_loop_sim = None
 
     def run_kinematics(self) -> None:
         x_init = np.array([0, 0, 15, 0, 0, 0, 15])
         x_final = np.array([GOAL_X, GOAL_Y, 40, 0, 0, 0, 30])
         u_0 = np.array([0, 0, 0, 15])
+
+        obstacle_list: List[Obstacle] = []
+        obstacle_list.append(Obstacle(center=[60, 60, 20], radius=10))
+
+        self.mpc = PlaneOptControl(mpc_params=self.params,
+                                   casadi_model=self.plane,
+                                   use_obs_avoidance=True,
+                                   obs_params=obstacle_list)
 
         def custom_stop_criteria(state: np.ndarray,
                                  final_state: np.ndarray) -> bool:
@@ -99,7 +108,7 @@ class Test():
         u_0 = np.array([0, 0, 20])
 
         obstacle_list: List[Obstacle] = []
-        obstacle_list.append(Obstacle(center=[30, 30, 20], radius=10))
+        obstacle_list.append(Obstacle(center=[50, 50, 20], radius=10))
         self.plane = JSBPlane()
 
         # let's define the limits for the states and controls
@@ -122,7 +131,6 @@ class Test():
         self.plane.set_state_limits(state_limits_dict)
 
         Q = np.array([1, 1, 1, 0, 0, 0, 0])
-        # Q = np.eye(plane.n_states)
         Q = np.diag(Q)
         R = np.array([0, 0, 0])  # np.eye(self.plane.n_controls)
         R = np.diag(R)
@@ -225,8 +233,19 @@ class Test():
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(states['x'], states['y'], states['z'], label='actual')
-        # ax.plot(states['x'][-1], states['y'][-1], states['z'][-1], 'ro', label='goal')
         ax.plot(GOAL_X, GOAL_Y, 40, 'ro', label='goal')
+
+        if cl_sim.optimizer.use_obs_avoidance:
+            for obs in cl_sim.optimizer.obs_params:
+                ax.plot([obs.center[0]], [obs.center[1]], [
+                        obs.center[2]], 'go', label='obstacle')
+                u = np.linspace(0, 2 * np.pi, 100)
+                v = np.linspace(0, np.pi, 100)
+                x = obs.radius * np.outer(np.cos(u), np.sin(v)) + obs.center[0]
+                y = obs.radius * np.outer(np.sin(u), np.sin(v)) + obs.center[1]
+                z = obs.radius * \
+                    np.outer(np.ones(np.size(u)), np.cos(v)) + obs.center[2]
+                ax.plot_surface(x, y, z, color='b', alpha=0.5)
 
         pkl.dump(states, open('states.pkl', 'wb'))
         pkl.dump(next_state, open('next_state.pkl', 'wb'))
