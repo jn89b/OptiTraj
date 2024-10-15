@@ -162,8 +162,8 @@ class OptimalControlProblem(ABC):
                     # 'max_wall_time': 0.10,
                     'print_level': 0,
                     'warm_start_init_point': 'yes',  # use the previous solution as initial guess
-                    # 'acceptable_tol': 1e-2,
-                    # 'acceptable_obj_change_tol': 1e-2,
+                    'acceptable_tol': 1e-2,
+                    'acceptable_obj_change_tol': 1e-2,
                     # 'hsllib': '/usr/local/lib/libcoinhsl.so', #need to set the optimizer library
                     # 'hsllib': '/usr/local/lib/libfakemetis.so', #need to set the optimizer library
                     # 'linear_solver': 'ma57',

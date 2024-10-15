@@ -26,7 +26,7 @@ class DynamicsAdapter():
     @abstractmethod
     def set_controls(self, x: Dict, u: Dict, ctrl_idx: int) -> None:
         """
-        Set the controls for the dynamics system 
+        Set the controls for the dynamics system
         so that it can interface with the Simulator
         """
         pass
@@ -86,23 +86,20 @@ class JSBSimAdapter(DynamicsAdapter):
         This will set the controls for the JSBSimAdapter class
 
         """
-        idx = -1
-        x_ref_m = x['x'][idx]
-        y_ref_m = x['y'][idx]
-        aircraft_state = self.get_state_information()
-        # FIX THE COORDINATE TRANSFORMATION
-        dx = x_ref_m - aircraft_state[0]
-        dy = y_ref_m - aircraft_state[1]
-
-        # for some reason the reference for height doesn't work well
-        # so we're going to set z height based on the goal location
-        los = np.arctan2(dy, dx)
-        los = np.pi/2 - los
+        # idx = 1
+        psi_ref = np.pi/2 - x['psi'][idx]
+        theta_ref = x['theta'][idx]
         vel_cmd = u['v_cmd'][idx]
+        phi_cmd = u['u_phi'][idx]
+        # z_cmd = u['u_z'][idx]
+        z_ref_m = x['z'][idx]
+
         self.current_control = HighControlInputs(
-            ctrl_idx=1,
-            alt_ref_m=xF[2],
-            heading_ref_deg=np.rad2deg(los),
+            ctrl_idx=0,
+            pitch=theta_ref,
+            alt_ref_m=z_ref_m,
+            roll=phi_cmd,
+            yaw=psi_ref,
             vel_cmd=vel_cmd
         )
 
@@ -114,19 +111,22 @@ class JSBSimAdapter(DynamicsAdapter):
         """
         aircraft_state: AircraftState = self.simulator.get_states()
         # wrap aircraft yaw from -pi to pi
-        transformed_yaw = np.pi/2 - aircraft_state.yaw
+        # transformed_yaw = np.pi/2 - aircraft_state.yaw
+        transformed_yaw = aircraft_state.yaw
+        # wrap yaw between 0 to 2pi
         if transformed_yaw > np.pi:
             transformed_yaw -= 2*np.pi
         elif transformed_yaw < -np.pi:
             transformed_yaw += 2*np.pi
 
+        # need to reverse the x and y coordinates
         return np.array([
-            aircraft_state.x,
             aircraft_state.y,
+            aircraft_state.x,
             aircraft_state.z,
             aircraft_state.roll,
             aircraft_state.pitch,
-            transformed_yaw,
+            aircraft_state.yaw,
             aircraft_state.airspeed
         ])
 
@@ -134,10 +134,16 @@ class JSBSimAdapter(DynamicsAdapter):
         aircraft_state: AircraftState = self.simulator.get_states()
         p_q_r = self.simulator.sim.get_rates()
         p_q_r[2] = np.pi/2 - p_q_r[2]
-        current_heading = aircraft_state.yaw
+        transformed_yaw = np.pi/2 - aircraft_state.yaw
+        transformed_yaw = np.pi/2 - aircraft_state.yaw
+        transformed_yaw = aircraft_state.yaw
+        if transformed_yaw > np.pi:
+            transformed_yaw -= 2*np.pi
+        elif transformed_yaw < -np.pi:
+            transformed_yaw += 2*np.pi
 
         return np.array([
-            current_heading,
+            aircraft_state.roll,
             aircraft_state.z,
             aircraft_state.airspeed,
         ])

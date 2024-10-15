@@ -33,7 +33,7 @@ class PlaneOptControl(OptimalControlProblem):
                          casadi_model)
 
         self.use_obs_avoidance: bool = use_obs_avoidance
-        self.obs_params: dict = obs_params
+        self.obs_params: List[Obstacle] = obs_params
         self.robot_radius: float = robot_radius
         if self.use_obs_avoidance:
             self.is_valid_obs_params()
@@ -101,11 +101,11 @@ class PlaneOptControl(OptimalControlProblem):
             diff = distance + obs_radius + self.robot_radius
             cost += ca.sum1(diff[:-1].T)
 
-        return cost
+        return 10*cost
 
     def compute_total_cost(self) -> MX:
         cost = self.compute_dynamics_cost()
-        # cost = cost + self.compute_obstacle_avoidance_cost()
+        cost = cost + self.compute_obstacle_avoidance_cost()
         return cost
 
     def solve(self, x0: np.ndarray, xF: np.ndarray, u0: np.ndarray) -> np.ndarray:
