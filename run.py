@@ -15,7 +15,7 @@ from optitraj.utils.data_container import MPCParams
 from optitraj.utils.report import Report
 from optitraj.dynamics_adapter import JSBSimAdapter
 
-from optitraj.planner.sparse_astar import SparseAstar
+from optitraj.planner.sparse_astar import SparseAstar, Route
 from optitraj.planner.position_vector import PositionVector
 from optitraj.planner.grid import FWAgent, Grid
 from optitraj.planner.grid_obs import Obstacle as GridObstacle
@@ -41,7 +41,7 @@ GOAL_Z = 25
 def knn_obstacles(obs: np.ndarray, ego_pos: np.ndarray,
                   K: int = 3, use_2d: bool = False) -> tuple:
     """
-    Find the K nearest obstacles to the ego vehicle and return the 
+    Find the K nearest obstacles to the ego vehicle and return the
     obstacle positions and distances
     """
     if use_2d:
@@ -89,7 +89,7 @@ def find_danger_zones(obstacles: np.ndarray,
                       distance_buffer: float = 10.0,
                       use_2d: bool = False) -> np.ndarray:
     '''
-    compute the obstacles that are inline with the ego 
+    compute the obstacles that are inline with the ego
     we check if they are within the minimum radius of turn with the buffer
     '''
     # check size of ego_position
@@ -480,6 +480,10 @@ class Test():
             print(new_dot_products)
 
     def global_path_planning(self) -> None:
+        """
+        TODO: This is annoying to set up
+        find a way to make it easier to set up the inititial conditions
+        """
         start_position = PositionVector(0, 0, 20)
 
         goal_position = PositionVector(GOAL_X, GOAL_Y, GOAL_Z)
@@ -494,16 +498,39 @@ class Test():
         fw_agent.vehicle_constraints(horizontal_min_radius_m=r,
                                      max_climb_angle_dg=10,
                                      max_psi_turn_dg=45)
-        fw_agent.leg_m = 10
+        fw_agent.leg_m = 5
         fw_agent.set_goal_state(goal_position)
 
         grid = Grid(fw_agent)
-        obstacle = GridObstacle(PositionVector(50, 50, 20), 10)
+        obstacle = GridObstacle(PositionVector(50, 50, 20), 30)
         grid.insert_obstacles(obstacle)
         sparse_astar = SparseAstar(grid, velocity=speed_ms, max_time_search=10)
-        sparse_astar.init_nodes()
-        path = sparse_astar.search()
-        print(path)
+        # sparse_astar.init_nodes()
+        path: Route = sparse_astar.search()
+
+        # create a 3d plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(path.x, path.y, path.z, label='path')
+        ax.scatter(start_position.x, start_position.y, start_position.z,
+                   label='start', color='g')
+        ax.scatter(goal_position.x, goal_position.y, goal_position.z,
+                   label='goal', color='r')
+        # draw obstacle as cylinder
+        ax.scatter(obstacle.position.x, obstacle.position.y,
+                   obstacle.position.z, label='obstacle', color='b')
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+        x = obstacle.radius_m * \
+            np.outer(np.cos(u), np.sin(v)) + obstacle.position.x
+        y = obstacle.radius_m * \
+            np.outer(np.sin(u), np.sin(v)) + obstacle.position.y
+        z = obstacle.radius_m * \
+            np.outer(np.ones(np.size(u)), np.cos(v)) + obstacle.position.z
+
+        ax.plot_surface(x, y, z, color='b', alpha=0.5)
+
+        plt.show()
 
 
 def run_close_loop_sim():

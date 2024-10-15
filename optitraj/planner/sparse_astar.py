@@ -3,6 +3,7 @@ This algorithm implements Sparse Astar algorithm for path planning
 """
 import numpy as np
 import time
+from dataclasses import dataclass
 from queue import PriorityQueue
 from typing import List, Tuple, Dict
 from optitraj.planner.position_vector import PositionVector
@@ -15,6 +16,20 @@ def round_to_nearest_even(number: int) -> int:
         return rounded_number + 1  # If odd, add 1 to make it even
     else:
         return rounded_number  # If even, return it as is
+
+
+@dataclass
+class Route:
+    """
+    Route dataclass
+    """
+    x: List[float]
+    y: List[float]
+    z: List[float]
+    phi: List[float]
+    theta: List[float]
+    psi: List[float]
+    time: float
 
 
 class Report:
@@ -51,6 +66,13 @@ class Report:
             path_dict["time"] = self.time
 
         return path_dict
+
+    def get_route(self) -> Route:
+        path_dict = self.package_path()
+        route = Route(path_dict["x"], path_dict["y"], path_dict["z"],
+                      path_dict["phi"], path_dict["theta"], path_dict["psi"],
+                      path_dict["time"])
+        return route
 
 
 class Node(object):
@@ -130,6 +152,7 @@ class SparseAstar():
         self.goal_node: Node = None
         self.velocity: float = velocity
         self.max_time_search: float = max_time_search
+        self.init_nodes()
 
     def clear_sets(self) -> None:
         self.open_set: PriorityQueue = PriorityQueue()
@@ -202,7 +225,7 @@ class SparseAstar():
         """returns the rcs key based on roll pitch yaw"""
         return f"{azimith_dg}_{elevation_dg}"
 
-    def return_path(self, current_node) -> Dict[str, List[float]]:
+    def return_path(self, current_node) -> Route:
         path = []
         current = current_node
 
@@ -223,9 +246,9 @@ class SparseAstar():
 
         report = Report(waypoints, current_node.total_time)
 
-        return report.package_path()
+        return report.get_route()
 
-    def search(self) -> Dict[str, List[float]]:
+    def search(self) -> Route:
 
         max_iterations = 10000
         iterations = 0
