@@ -437,8 +437,8 @@ class Test():
 
         def custom_stop_criteria(state: np.ndarray,
                                  final_state: np.ndarray) -> bool:
-            distance = np.linalg.norm(state[0:2] - final_state[0:2])
-            if distance < 5.0:
+            dist: float = np.linalg.norm(state[0:2] - final_state[0:2])
+            if dist < 5.0:
                 return True
 
         self.closed_loop_sim = CloseLoopSim(
@@ -484,26 +484,27 @@ class Test():
         TODO: This is annoying to set up
         find a way to make it easier to set up the inititial conditions
         """
-        start_position = PositionVector(0, 0, 20)
-
+        # define the initial conditions and parameters
+        start_position = PositionVector(-25, -25, 20)
         goal_position = PositionVector(GOAL_X, GOAL_Y, GOAL_Z)
-        grid_size = (1000, 1000, 100)
         speed_ms = 20
-
         aircraft_max_roll_dg = 45.0
-        aircraft_max_pitch_dg = 10.0
-
-        fw_agent = FWAgent(start_position, theta_dg=0, psi_dg=0)
         r = speed_ms**2 / (9.81 * np.tan(np.deg2rad(aircraft_max_roll_dg)))
+
+        # create a fixed wing agent
+        fw_agent = FWAgent(start_position, theta_dg=0, psi_dg=0)
         fw_agent.vehicle_constraints(horizontal_min_radius_m=r,
                                      max_climb_angle_dg=10,
                                      max_psi_turn_dg=45)
         fw_agent.leg_m = 5
         fw_agent.set_goal_state(goal_position)
 
-        grid = Grid(fw_agent)
+        # create a grid and insert obstacles
+        grid = Grid(fw_agent, x_min_m=-500, y_min_m=-500)
         obstacle = GridObstacle(PositionVector(50, 50, 20), 30)
         grid.insert_obstacles(obstacle)
+
+        # Now we can run the sparse A* algorithm
         sparse_astar = SparseAstar(grid, velocity=speed_ms, max_time_search=10)
         # sparse_astar.init_nodes()
         path: Route = sparse_astar.search()

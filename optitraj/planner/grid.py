@@ -6,6 +6,11 @@ from optitraj.planner.grid_obs import Obstacle
 
 
 class FWAgent():
+    """
+    This class defines the agent constraints and
+    actions that the agent can take in the sparse graph planner
+    """
+
     def __init__(self, position: PositionVector,
                  theta_dg: float = 0, psi_dg: float = 0,
                  leg_m: float = 50,
