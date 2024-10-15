@@ -5,7 +5,8 @@ import pickle as pkl
 
 from typing import Dict, List
 
-from aircraftsim import DataVisualizer
+from scipy.spatial import distance
+
 
 from optitraj.models.plane import Plane, JSBPlane
 from optitraj.close_loop import CloseLoopSim
@@ -13,7 +14,11 @@ from optitraj.mpc.PlaneOptControl import PlaneOptControl, Obstacle
 from optitraj.utils.data_container import MPCParams
 from optitraj.utils.report import Report
 from optitraj.dynamics_adapter import JSBSimAdapter
-from scipy.spatial import distance
+
+from optitraj.planner.sparse_astar import SparseAstar
+from optitraj.planner.position_vector import PositionVector
+from optitraj.planner.grid import FWAgent, Grid
+from optitraj.planner.grid_obs import Obstacle as GridObstacle
 
 
 try:
@@ -22,12 +27,13 @@ try:
         SimInterface,
         AircraftIC
     )
+    from aircraftsim import DataVisualizer
 
 
 except ImportError:
     print('aircraftsim not installed')
 
-GOAL_X = -125
+GOAL_X = 250
 GOAL_Y = 125
 GOAL_Z = 25
 
@@ -473,12 +479,39 @@ class Test():
             print(danger_zones)
             print(new_dot_products)
 
+    def global_path_planning(self) -> None:
+        start_position = PositionVector(0, 0, 20)
+
+        goal_position = PositionVector(GOAL_X, GOAL_Y, GOAL_Z)
+        grid_size = (1000, 1000, 100)
+        speed_ms = 20
+
+        aircraft_max_roll_dg = 45.0
+        aircraft_max_pitch_dg = 10.0
+
+        fw_agent = FWAgent(start_position, theta_dg=0, psi_dg=0)
+        r = speed_ms**2 / (9.81 * np.tan(np.deg2rad(aircraft_max_roll_dg)))
+        fw_agent.vehicle_constraints(horizontal_min_radius_m=r,
+                                     max_climb_angle_dg=10,
+                                     max_psi_turn_dg=45)
+        fw_agent.leg_m = 10
+        fw_agent.set_goal_state(goal_position)
+
+        grid = Grid(fw_agent)
+        obstacle = GridObstacle(PositionVector(50, 50, 20), 10)
+        grid.insert_obstacles(obstacle)
+        sparse_astar = SparseAstar(grid, velocity=speed_ms, max_time_search=10)
+        sparse_astar.init_nodes()
+        path = sparse_astar.search()
+        print(path)
+
 
 def run_close_loop_sim():
     test = Test()
     # test.run_kinematics()
     # test.run_jsbsim()
-    test.test_knn_obstacles()
+    # test.test_knn_obstacles()
+    test.global_path_planning()
 
 
 if __name__ == '__main__':

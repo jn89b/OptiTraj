@@ -3,7 +3,7 @@ import numpy as np
 from optitraj.planner.position_vector import PositionVector
 
 
-class GridObstacle():
+class Obstacle():
     def __init__(self, position: PositionVector, radius_m: float) -> None:
         self.position = position
         self.radius_m = radius_m

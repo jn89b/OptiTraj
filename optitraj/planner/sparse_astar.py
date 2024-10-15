@@ -4,17 +4,53 @@ This algorithm implements Sparse Astar algorithm for path planning
 import numpy as np
 import time
 from queue import PriorityQueue
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from optitraj.planner.position_vector import PositionVector
-from optitraj.planner.grid import Grid
+from optitraj.planner.grid import Grid, FWAgent
 
 
-def round_to_nearest_even(number: int):
+def round_to_nearest_even(number: int) -> int:
     rounded_number = round(number)
     if rounded_number % 2 == 1:  # Check if the rounded number is odd
         return rounded_number + 1  # If odd, add 1 to make it even
     else:
         return rounded_number  # If even, return it as is
+
+
+class Report:
+    def __init__(self, path: List[List[float]], time: float) -> None:
+        self.path = path
+        self.time = time
+
+    def package_path(self) -> Dict:
+        """
+        Returns the path as a dictionary formatted as follows:
+        x: List[float]
+        y: List[float]
+        z: List[float]
+        phi: List[float] (degrees)
+        theta: List[float] (degrees)
+        psi: List[float] (degrees)
+        """
+        path_dict = {
+            "x": [],
+            "y": [],
+            "z": [],
+            "phi": [],
+            "theta": [],
+            "psi": []
+        }
+
+        for i in range(len(self.path)):
+            path_dict["x"].append(self.path[i][0])
+            path_dict["y"].append(self.path[i][1])
+            path_dict["z"].append(self.path[i][2])
+            path_dict["phi"].append(self.path[i][3])
+            path_dict["theta"].append(self.path[i][4])
+            path_dict["psi"].append(self.path[i][5])
+            path_dict["time"] = self.time
+
+        return path_dict
 
 
 class Node(object):
@@ -83,26 +119,29 @@ class Node(object):
 
 class SparseAstar():
     def __init__(self, grid: Grid,
-                 velocity=5) -> None:
-        self.open_set = PriorityQueue()
-        self.closed_set = {}
+                 velocity: float = 15,
+                 max_time_search: float = 10.0) -> None:
+        self.open_set: PriorityQueue = PriorityQueue()
+        self.closed_set: Dict = {}
 
-        self.grid = grid
-        self.agent = grid.agent
-        self.start_node = None
-        self.goal_node = None
-        self.velocity = velocity
+        self.grid: Grid = grid
+        self.agent: FWAgent = grid.agent
+        self.start_node: Node = None
+        self.goal_node: Node = None
+        self.velocity: float = velocity
+        self.max_time_search: float = max_time_search
 
-    def clear_sets(self):
-        self.open_set = PriorityQueue()
-        self.closed_set = {}
+    def clear_sets(self) -> None:
+        self.open_set: PriorityQueue = PriorityQueue()
+        self.closed_set: Dict = {}
 
-    def init_nodes(self):
+    def init_nodes(self) -> None:
         # Snap the start and end position to the grid
         direction = self.agent.position.vec - self.agent.goal_position.vec
         direction_vector = PositionVector(
             direction[0], direction[1], direction[2])
-        direction_vector.set_position(direction[0], direction[1], direction[2])
+        direction_vector.update_position(
+            direction[0], direction[1], direction[2])
         # rounded_start_position = self.grid.map_position_to_grid(
         #     self.agent.position, direction_vector)
 
@@ -136,7 +175,7 @@ class SparseAstar():
         for move in moves:
             scaled_move = [move[0], move[1], move[2]]
             scaled_position = PositionVector(move[0], move[1], move[2])
-            scaled_position.set_position(
+            scaled_position.update_position(
                 scaled_move[0], scaled_move[1], scaled_move[2])
             if self.is_valid_position(scaled_position):
                 legal_moves.append(scaled_position)
@@ -163,18 +202,16 @@ class SparseAstar():
         """returns the rcs key based on roll pitch yaw"""
         return f"{azimith_dg}_{elevation_dg}"
 
-    def return_path(self, current_node):
+    def return_path(self, current_node) -> Dict[str, List[float]]:
         path = []
         current = current_node
 
         while current is not None:
             states = [current.position.x,
                       current.position.y, current.position.z]
-            states.append(current.theta_dg)
             states.append(current.phi_dg)
+            states.append(current.theta_dg)
             states.append(current.psi_dg)
-            states.append(current.rcs_value)
-            states.append(current.radar_detection)
             path.append(states)
             current = current.parent
         # Return reversed path as we need to show from start to end path
@@ -184,30 +221,28 @@ class SparseAstar():
         for points in path:
             waypoints.append(points)
 
-        return waypoints
+        report = Report(waypoints, current_node.total_time)
 
-    def search(self):
+        return report.package_path()
+
+    def search(self) -> Dict[str, List[float]]:
 
         max_iterations = 10000
         iterations = 0
 
         start_time = time.time()
-        max_time = 10  # seconds
 
         while (not self.open_set.empty() and iterations < max_iterations):
 
             iterations += 1
             cost, current_node = self.open_set.get()
-            # print("current node", current_node.position.vec)
-            # print("current node psi", current_node.psi_dg)
 
             self.closed_set[str(
                 list(current_node.position.vec))] = current_node
 
             current_time = time.time() - start_time
-            # print("position", current_node.position.vec)
 
-            if current_time > max_time:
+            if current_time > self.max_time_search:
                 print("reached time limit", current_time)
                 return self.return_path(current_node)
 
@@ -242,6 +277,7 @@ class SparseAstar():
                 neighbor: Node = Node(current_node, move, self.velocity,
                                       current_node.psi_dg)
 
+                # TODO: add method to do cost function
                 neighbor.g = current_node.g + 1
                 neighbor.h = (self.compute_distance(neighbor, self.goal_node))
                 neighbor.f = neighbor.g + neighbor.h

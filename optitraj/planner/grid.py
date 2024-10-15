@@ -2,7 +2,7 @@ import numpy as np
 import math as m
 from typing import List, Tuple
 from optitraj.planner.position_vector import PositionVector
-from optitraj.planner.obstacle import GridObstacle
+from optitraj.planner.grid_obs import Obstacle
 
 
 class FWAgent():
@@ -157,7 +157,7 @@ class Grid():
             z_round = self.sz * m.floor(position.z/self.sz)
 
         rounded_position = PositionVector(x_round, y_round, z_round)
-        rounded_position.set_position(x_round, y_round, z_round)
+        rounded_position.update_position(x_round, y_round, z_round)
         return rounded_position
 
     def set_grid_size(self) -> None:

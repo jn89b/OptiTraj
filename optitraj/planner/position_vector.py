@@ -8,7 +8,7 @@ class PositionVector():
         self.z = z
         self.vec = np.array([x, y, z])
 
-    def set_position(self, x: float = 0, y: float = 0, z: float = 0) -> None:
+    def update_position(self, x: float = 0, y: float = 0, z: float = 0) -> None:
         self.x = x
         self.y = y
         self.z = z
