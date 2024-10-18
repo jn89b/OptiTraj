@@ -153,13 +153,58 @@ class OptimalControlProblem(ABC):
         """
         pass
 
-    @abstractmethod
-    def solve(self, x0: np.ndarray, xF: np.ndarray, u0: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    # @abstractmethod
+    # def solve(self, x0: np.ndarray, xF: np.ndarray, u0: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    #     """
+    #     Abstract method that must be implemented by the user to solve the optimal control problem.
+    #     The method should return the optimal state and control trajectories.
+    #     """
+    #     pass
+
+    def solve(self, x0: np.ndarray, xF: np.ndarray, u0: np.ndarray) -> np.ndarray:
         """
-        Abstract method that must be implemented by the user to solve the optimal control problem.
-        The method should return the optimal state and control trajectories.
+        Solve the optimal control problem for the given initial state and control
+
         """
-        pass
+        state_init = ca.DM(x0)
+        state_final = ca.DM(xF)
+
+        X0 = ca.repmat(state_init, 1, self.N+1)
+        U0 = ca.repmat(u0, 1, self.N)
+
+        n_states = self.casadi_model.n_states
+        n_controls = self.casadi_model.n_controls
+
+        num_constraints = n_states*(self.N+1)
+        lbg = ca.DM.zeros((num_constraints, 1))
+        ubg = ca.DM.zeros((num_constraints, 1))
+
+        args = {
+            'lbg': lbg,
+            'ubg': ubg,
+            'lbx': self.pack_variables_fn(**self.lbx)['flat'],
+            'ubx': self.pack_variables_fn(**self.ubx)['flat'],
+        }
+        args['p'] = ca.vertcat(
+            state_init,    # current state
+            state_final   # target state
+        )
+
+        args['x0'] = ca.vertcat(
+            ca.reshape(X0, n_states*(self.N+1), 1),
+            ca.reshape(U0, n_controls*self.N, 1)
+        )
+        # init_time = time.time()
+        solution = self.solver(
+            x0=args['x0'],
+            lbx=args['lbx'],
+            ubx=args['ubx'],
+            lbg=args['lbg'],
+            ubg=args['ubg'],
+            p=args['p']
+        )
+
+        return solution
 
     def set_dynamic_constraints(self):
         """
