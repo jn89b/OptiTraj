@@ -537,9 +537,9 @@ class Test():
 def run_close_loop_sim():
     test = Test()
     # test.run_kinematics()
-    # test.run_jsbsim()
+    test.run_jsbsim()
     # test.test_knn_obstacles()
-    test.global_path_planning()
+    # test.global_path_planning()
 
 
 if __name__ == '__main__':
