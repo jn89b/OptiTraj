@@ -7,7 +7,6 @@ from typing import Dict, List
 
 from scipy.spatial import distance
 
-
 from optitraj.models.plane import Plane, JSBPlane
 from optitraj.close_loop import CloseLoopSim
 from optitraj.mpc.PlaneOptControl import PlaneOptControl, Obstacle
@@ -19,7 +18,7 @@ from optitraj.planner.sparse_astar import SparseAstar, Route
 from optitraj.planner.position_vector import PositionVector
 from optitraj.planner.grid import FWAgent, Grid
 from optitraj.planner.grid_obs import Obstacle as GridObstacle
-
+from optitraj.planner.interface import Planner
 
 try:
     # import aircraftsim
@@ -33,8 +32,8 @@ try:
 except ImportError:
     print('aircraftsim not installed')
 
-GOAL_X = 250
-GOAL_Y = 125
+GOAL_X = 100
+GOAL_Y = 100
 GOAL_Z = 25
 
 
@@ -245,6 +244,7 @@ class Test():
         def custom_stop_criteria(state: np.ndarray,
                                  final_state: np.ndarray) -> bool:
             distance = np.linalg.norm(state[0:2] - final_state[0:2])
+            print("distance", distance)
             if distance < 5.0:
                 return True
 
@@ -313,7 +313,7 @@ class Test():
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(states['x'], states['y'], states['z'], label='actual')
-        ax.plot(GOAL_X, GOAL_Y, GOAL_Z, 'ro', label='goal')
+        ax.plot(GOAL_X, GOAL_Y, GOAL_Z, 'ro', label='goal', color='black')
 
         if cl_sim.optimizer.use_obs_avoidance:
             for obs in cl_sim.optimizer.obs_params:
@@ -338,7 +338,7 @@ class Test():
             fig, ax = data_vis.plot_3d_trajectory()
             # plot goal location
             x_final = cl_sim.x_final
-            ax.scatter(x_final[0], x_final[1], x_final[2], label='goal')
+            ax.scatter(x_final[0], x_final[1], x_final[2], label='end')
             buffer = 30
             max_x = max(states['x'])
             min_x = min(states['x'])
@@ -360,7 +360,7 @@ class Test():
 
         ax.plot(states['x'], states['y'], states['z'],
                 label='from mpc', color='g')
-        ax.plot(GOAL_X, GOAL_Y, GOAL_Z, 'ro', label='goal')
+        ax.plot(GOAL_X, GOAL_Y, GOAL_Z, 'ro', label='GOAL Location')
         ax.legend()
         plt.show()
 
@@ -379,7 +379,7 @@ class Test():
         u_0 = np.array([0, 0, 20])
 
         obstacle_list: List[Obstacle] = []
-        obstacle_list.append(Obstacle(center=[50, 50, 20], radius=10))
+        obstacle_list.append(Obstacle(center=[50, 50, 20], radius=15))
         self.plane = JSBPlane(dt_val=1/60)
 
         # let's define the limits for the states and controls
@@ -406,11 +406,11 @@ class Test():
         R = np.array([0, 0, 0])  # np.eye(self.plane.n_controls)
         R = np.diag(R)
 
-        params = MPCParams(Q=Q, R=R, N=10, dt=1/60)
+        params = MPCParams(Q=Q, R=R, N=15, dt=0.1)
         self.mpc = PlaneOptControl(
             mpc_params=params,
             casadi_model=self.plane,
-            use_obs_avoidance=False,
+            use_obs_avoidance=True,
             obs_params=obstacle_list,
             robot_radius=10.0)
 
@@ -455,29 +455,36 @@ class Test():
 
         obstacles = self.mpc.obs_params
 
-        def vectorize_obs(obstacles: List[Obstacle]) -> np.ndarray:
-            obs_array = []
-            for obs in obstacles:
-                obs_array.append([obs.center[0], obs.center[1], obs.radius])
-            return np.array(obs_array)
+        self.closed_loop_sim.run()
 
-        obstacles = vectorize_obs(obstacles)
+        report: Report = self.closed_loop_sim.report
+        states = report.current_state
 
-        for i in range(self.closed_loop_sim.N):
-            solution = self.closed_loop_sim.run_single_step()
-            state = solution['states']
+        self.plot(report, self.closed_loop_sim, True)
 
-            ego_position = state[:3]
-            ego_unit_vector = state[3:6]
-            inline_obstacles, dot_products = find_inline_obstacles(
-                ego_unit_vector, obstacles, ego_position, use_2d=True)
-            print(inline_obstacles)
-            print(dot_products)
+        # def vectorize_obs(obstacles: List[Obstacle]) -> np.ndarray:
+        #     obs_array = []
+        #     for obs in obstacles:
+        #         obs_array.append([obs.center[0], obs.center[1], obs.radius])
+        #     return np.array(obs_array)
 
-            danger_zones, new_dot_products = find_danger_zones(
-                inline_obstacles, ego_position, 10.0, dot_products, use_2d=True)
-            print(danger_zones)
-            print(new_dot_products)
+        # obstacles = vectorize_obs(obstacles)
+
+        # for i in range(self.closed_loop_sim.N):
+        #     solution = self.closed_loop_sim.run_single_step()
+        #     state = solution['states']
+
+        #     ego_position = state[:3]
+        #     ego_unit_vector = state[3:6]
+        #     inline_obstacles, dot_products = find_inline_obstacles(
+        #         ego_unit_vector, obstacles, ego_position, use_2d=True)
+        #     print(inline_obstacles)
+        #     print(dot_products)
+
+        #     danger_zones, new_dot_products = find_danger_zones(
+        #         inline_obstacles, ego_position, 10.0, dot_products, use_2d=True)
+        #     print(danger_zones)
+        #     print(new_dot_products)
 
     def global_path_planning(self) -> None:
         """
@@ -533,12 +540,17 @@ class Test():
 
         plt.show()
 
+    def refactored_global_path_planning(self) -> None:
+        """
+        """
+
 
 def run_close_loop_sim():
     test = Test()
     # test.run_kinematics()
-    test.run_jsbsim()
+    # test.run_jsbsim()
     # test.test_knn_obstacles()
+    test.test_avoidance()
     # test.global_path_planning()
 
 

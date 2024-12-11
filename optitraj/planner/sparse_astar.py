@@ -165,8 +165,6 @@ class SparseAstar():
             direction[0], direction[1], direction[2])
         direction_vector.update_position(
             direction[0], direction[1], direction[2])
-        # rounded_start_position = self.grid.map_position_to_grid(
-        #     self.agent.position, direction_vector)
 
         self.start_node = Node(None, self.agent.position,
                                self.velocity, 0,
@@ -225,7 +223,7 @@ class SparseAstar():
         """returns the rcs key based on roll pitch yaw"""
         return f"{azimith_dg}_{elevation_dg}"
 
-    def return_path(self, current_node) -> Route:
+    def return_path(self, current_node: Node) -> Route:
         path = []
         current = current_node
 

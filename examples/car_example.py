@@ -141,7 +141,7 @@ def main() -> None:
     # now we will set the MPC weights for the plane
     # 0 means we don't care about the specific state variable 1 means we care about it
     Q: np.diag = np.diag([1, 1, 0])
-    R: np.diag = np.diag([0.0, 0.0])
+    R: np.diag = np.diag([1.0, 1.0])
 
     # we will now slot the MPC weights into the MPCParams class
     mpc_params: MPCParams = MPCParams(Q=Q, R=R, N=15, dt=0.1)
@@ -150,7 +150,7 @@ def main() -> None:
         mpc_params=mpc_params, casadi_model=plane)
 
     # now set your initial conditions for this case its the plane
-    x0: np.array = np.array([5, 5, np.deg2rad(45)])
+    x0: np.array = np.array([-25, 5, np.deg2rad(45)])
     xF: np.array = np.array([0, 100, np.deg2rad(45)])
     u_0: np.array = np.array([0, control_limits_dict['v_cmd']['min']])
 
@@ -173,9 +173,9 @@ def main() -> None:
     # we will now plot the trajectory
     # plot a 3D trajectory
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111)
     ax.plot(states['x'], states['y'])
-    ax.scatter(xF[0], xF[1], xF[2], c='r', label='Goal')
+    ax.scatter(xF[0], xF[1], c='r', label='Goal')
     plt.show()
 
 

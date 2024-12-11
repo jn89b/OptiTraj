@@ -36,6 +36,7 @@ class PlaneOptControl(OptimalControlProblem):
         self.obs_params: List[Obstacle] = obs_params
         self.robot_radius: float = robot_radius
         if self.use_obs_avoidance:
+            print("Using obstacle avoidance")
             self.is_valid_obs_params()
             self.set_obstacle_avoidance_constraints()
 
@@ -105,7 +106,7 @@ class PlaneOptControl(OptimalControlProblem):
 
     def compute_total_cost(self) -> MX:
         cost = self.compute_dynamics_cost()
-        cost = cost + self.compute_obstacle_avoidance_cost()
+        # cost = cost + self.compute_obstacle_avoidance_cost()
         return cost
 
     def solve(self, x0: np.ndarray, xF: np.ndarray, u0: np.ndarray) -> np.ndarray:
@@ -121,7 +122,7 @@ class PlaneOptControl(OptimalControlProblem):
 
         n_states = self.casadi_model.n_states
         n_controls = self.casadi_model.n_controls
-        self.set_obstacle_avoidance_constraints()
+        # self.compute_obstacle_avoidance_cost()
 
         if self.use_obs_avoidance and self.obs_params is not None:
             # set the obstacle avoidance constraints

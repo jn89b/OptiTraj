@@ -86,7 +86,7 @@ class JSBSimAdapter(DynamicsAdapter):
         This will set the controls for the JSBSimAdapter class
 
         """
-        # idx = 1
+        idx = 1
         psi_ref = np.pi/2 - x['psi'][idx]
         theta_ref = x['theta'][idx]
         vel_cmd = u['v_cmd'][idx]

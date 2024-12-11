@@ -141,6 +141,21 @@ class CloseLoopSim():
                              x_final.shape[0])
         self.x_final = x_final
 
+    def update_u0(self, u0: np.ndarray) -> None:
+        """
+        Update the initial control inputs.
+        Args:
+            u0 (np.ndarray): The new initial control inputs.
+
+        Raises:
+            ValueError: If the shape of u0 is incorrect.
+        """
+        if u0.shape[0] != self.u0.shape[0]:
+            raise ValueError("u0 is not the correct shape \
+                shape input must be: ", self.u0.shape[0], "but got: ",
+                             u0.shape[0])
+        self.u0 = u0
+
     def update_x_init(self, x_init: np.ndarray) -> None:
         """
         Update the initial state of the system.
@@ -205,7 +220,9 @@ class CloseLoopSim():
 
         return
 
-    def run_single_step(self, xF: np.ndarray = None) -> Dict:
+    def run_single_step(self, xF: np.ndarray = None,
+                        x0: np.ndarray = None,
+                        u0: np.ndarray = None) -> Dict:
         """
         Execute a single step of the closed-loop simulation.
 
@@ -222,6 +239,12 @@ class CloseLoopSim():
 
         if xF is not None:
             self.update_x_final(xF)
+
+        if x0 is not None:
+            self.update_x_init(x0)
+
+        if u0 is not None:
+            self.update_u0(u0)
 
         if self.dynamics_adapter is not None and self.update_controller:
             # print("Updating controller")
