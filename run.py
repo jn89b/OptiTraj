@@ -543,7 +543,7 @@ class Test():
     def refactored_global_path_planning(self) -> None:
         """
         """
-
+        
 
 def run_close_loop_sim():
     test = Test()

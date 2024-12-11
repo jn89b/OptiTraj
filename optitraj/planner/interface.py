@@ -118,7 +118,7 @@ class Planner():
                     self.grid.insert_obstacles(obstacle)
             else:
                 # generate random obstacles
-                pass
+                random_obstacles: List[GridObstacle]
 
         return self.grid
 
