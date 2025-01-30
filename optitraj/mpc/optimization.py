@@ -224,7 +224,8 @@ class OptimalControlProblem(ABC):
             # Add the dynamic constraint to the constraints list
             self.g = ca.vertcat(self.g, self.X[:, k+1] - state_next_rk4)
 
-    def init_solver(self, cost_fn: ca.MX, solver_opts: Dict = None) -> None:
+    def init_solver(self, cost_fn: ca.MX, solver_opts: Dict = None,
+                    max_wall_time_sec: float = 2.0) -> None:
         """Initialize the solver for the optimization problem using the defined cost function and constraints."""
         nlp_prob = {
             'f': cost_fn,
@@ -240,9 +241,10 @@ class OptimalControlProblem(ABC):
                     'warm_start_init_point': 'yes',
                     'acceptable_tol': 1e-2,
                     'acceptable_obj_change_tol': 1e-2,
+                    'max_wall_time': max_wall_time_sec,
                 },
                 'print_time': 0,
-                'expand': 1
+                'expand': 1,
             }
 
         self.solver = ca.nlpsol('solver', 'ipopt', nlp_prob, solver_opts)

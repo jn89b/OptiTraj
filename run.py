@@ -13,7 +13,6 @@ from optitraj.mpc.PlaneOptControl import PlaneOptControl, Obstacle
 from optitraj.utils.data_container import MPCParams
 from optitraj.utils.report import Report
 from optitraj.dynamics_adapter import JSBSimAdapter
-
 from optitraj.planner.sparse_astar import SparseAstar, Route
 from optitraj.planner.position_vector import PositionVector
 from optitraj.planner.grid import FWAgent, Grid
@@ -543,7 +542,7 @@ class Test():
     def refactored_global_path_planning(self) -> None:
         """
         """
-        
+
 
 def run_close_loop_sim():
     test = Test()

@@ -17,6 +17,13 @@ class DynamicsAdapter():
         self.simulator: Any = simulator
 
     @abstractmethod
+    def get_time_step(self) -> float:
+        """
+        Get the time step of the dynamics system
+        """
+        pass
+
+    @abstractmethod
     def initialize(self) -> None:
         """
         Initialize the dynamics system
@@ -79,6 +86,9 @@ class JSBSimAdapter(DynamicsAdapter):
         elif yaw_rad < -np.pi:
             yaw_rad += 2*np.pi
         return yaw_rad
+
+    def get_time_step(self):
+        return self.simulator.dt
 
     def set_controls(self, x: Dict, u: dict, idx: int,
                      xF: np.ndarray) -> None:

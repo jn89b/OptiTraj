@@ -19,8 +19,8 @@ class CloseLoopSim():
     """
     Closed-loop control simulation for a robotic system using Model Predictive Control (MPC).
 
-    This class simulates the closed-loop control of a robot using an MPC controller 
-    to compute the optimal control inputs. The user can feed their own dynamics system 
+    This class simulates the closed-loop control of a robot using an MPC controller
+    to compute the optimal control inputs. The user can feed their own dynamics system
     into the plant through the dynamics adapter.
 
     Attributes:
@@ -175,7 +175,7 @@ class CloseLoopSim():
 
     def update_time(self) -> None:
         """
-        Update the current time in the simulation and check if the controller 
+        Update the current time in the simulation and check if the controller
         needs to be updated.
         """
         if self.dynamics_adapter is not None:
@@ -226,7 +226,7 @@ class CloseLoopSim():
         """
         Execute a single step of the closed-loop simulation.
 
-        This method performs one iteration of the simulation. It updates the state and control 
+        This method performs one iteration of the simulation. It updates the state and control
         inputs using the optimizer and optionally allows for updating the final state.
 
         Args:
@@ -261,11 +261,8 @@ class CloseLoopSim():
 
         if self.current_step % self.print_every == 0:
             print("step: ", self.x_init)
-            # print("state: ", np.rad2deg(self.x_init[3]))
-            # print("sol: ", np.rad2deg(sol['states']['phi']))
 
         self.update_time()
-        self.update_controller = True
 
         # run the dynamics system if it is there
         if self.dynamics_adapter is not None:
