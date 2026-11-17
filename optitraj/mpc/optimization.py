@@ -148,7 +148,7 @@ class OptimalControlProblem(ABC):
             self.lbx['X'][i, :] = self.state_limits[state_name]['min']
             self.ubx['X'][i, :] = self.state_limits[state_name]['max']
 
-    @abstractmethod
+    # @abstractmethod
     def _parameter_length(self) -> int:
         """
         Return how many entries go into the vector P.

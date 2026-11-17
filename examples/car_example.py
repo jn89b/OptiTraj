@@ -148,6 +148,8 @@ def main() -> None:
     # formulate your optimal control problem
     plane_opt_control: PlaneOptControl = PlaneOptControl(
         mpc_params=mpc_params, casadi_model=plane)
+    plane_opt_control._parameter_length()
+    
 
     # now set your initial conditions for this case its the plane
     x0: np.array = np.array([-25, 5, np.deg2rad(45)])
